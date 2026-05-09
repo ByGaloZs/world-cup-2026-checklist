@@ -1,0 +1,38 @@
+[
+  {
+    "number": "MEX1",
+    "name": "Team Badge",
+    "team": "Mexico",
+    "category": "Official"
+  },
+  {
+    "number": "MEX2",
+    "name": "Player 1",
+    "team": "Mexico",
+    "category": "Official"
+  },
+  {
+    "number": "MEX3",
+    "name": "Player 2",
+    "team": "Mexico",
+    "category": "Official"
+  },
+  {
+    "number": "ARG1",
+    "name": "Team Badge",
+    "team": "Argentina",
+    "category": "Official"
+  },
+  {
+    "number": "ARG2",
+    "name": "Player 1",
+    "team": "Argentina",
+    "category": "Official"
+  },
+  {
+    "number": "BRA1",
+    "name": "Team Badge",
+    "team": "Brazil",
+    "category": "Official"
+  }
+]

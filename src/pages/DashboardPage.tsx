@@ -1,0 +1,94 @@
+import { useMemo, useState } from "react";
+import stickersData from "../data/stickers.json";
+import { AppLayout } from "../components/layout/AppLayout";
+import { StickerFilters } from "../components/stickers/StickerFilters";
+import { StickerGroup } from "../components/stickers/StickerGroup";
+import { StickerSearch } from "../components/stickers/StickerSearch";
+import { StickerStats } from "../components/stickers/StickerStats";
+import { useAuth } from "../features/auth/useAuth";
+import { useStickerProgress } from "../features/stickers/useStickerProgress";
+import type { Sticker, StickerFilter } from "../types/sticker";
+
+const stickers = stickersData as Sticker[];
+
+export function DashboardPage() {
+  const { user } = useAuth();
+  const { progress, loading, error, updateStickerProgress } = useStickerProgress(user?.id);
+  const [filter, setFilter] = useState<StickerFilter>("all");
+  const [search, setSearch] = useState("");
+
+  const stats = useMemo(() => {
+    const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
+    const repeated = stickers.filter((sticker) => progress[sticker.number]?.repeated).length;
+
+    return { total: stickers.length, owned, repeated };
+  }, [progress]);
+
+  const filteredStickers = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return stickers.filter((sticker) => {
+      const stickerProgress = progress[sticker.number];
+      const owned = stickerProgress?.owned ?? false;
+      const repeated = stickerProgress?.repeated ?? false;
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "missing" && !owned) ||
+        (filter === "owned" && owned) ||
+        (filter === "repeated" && repeated);
+      const searchable = `${sticker.number} ${sticker.name} ${sticker.team}`.toLowerCase();
+      const matchesSearch = normalizedSearch.length === 0 || searchable.includes(normalizedSearch);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [filter, progress, search]);
+
+  const groupedStickers = useMemo(() => {
+    return filteredStickers.reduce<Record<string, Sticker[]>>((groups, sticker) => {
+      groups[sticker.team] = groups[sticker.team] ?? [];
+      groups[sticker.team].push(sticker);
+      return groups;
+    }, {});
+  }, [filteredStickers]);
+
+  return (
+    <AppLayout>
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-950">My Album</h2>
+          <p className="mt-1 text-sm text-slate-600">Mark official/base stickers as owned or repeated. Changes are saved to your Supabase account.</p>
+        </div>
+
+        <StickerStats total={stats.total} owned={stats.owned} repeated={stats.repeated} />
+
+        <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+          <StickerSearch value={search} onChange={setSearch} />
+          <StickerFilters value={filter} onChange={setFilter} />
+        </div>
+
+        {loading ? <div className="rounded-lg bg-white p-4 text-sm text-slate-600">Loading sticker progress...</div> : null}
+        {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
+
+        {stickers.length === 0 ? (
+          <div className="rounded-lg bg-white p-4 text-sm text-slate-600">No stickers are available yet.</div>
+        ) : null}
+
+        {!loading && stickers.length > 0 && filteredStickers.length === 0 ? (
+          <div className="rounded-lg bg-white p-4 text-sm text-slate-600">No stickers match your search and filter.</div>
+        ) : null}
+
+        <div className="space-y-6">
+          {Object.entries(groupedStickers).map(([team, teamStickers]) => (
+            <StickerGroup
+              key={team}
+              team={team}
+              stickers={teamStickers}
+              progress={progress}
+              onUpdate={(stickerNumber, patch) => void updateStickerProgress(stickerNumber, patch)}
+            />
+          ))}
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
