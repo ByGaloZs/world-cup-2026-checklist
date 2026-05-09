@@ -4,6 +4,20 @@ import { getUserStickerProgress, upsertUserStickerProgress } from "./stickerProg
 
 export type StickerProgressMap = Record<string, UserStickerProgress>;
 
+type StickerProgressPatch = Partial<Pick<UserStickerProgress, "owned" | "repeated">>;
+
+function applyProgressRules(progress: Pick<UserStickerProgress, "owned" | "repeated">) {
+  if (progress.repeated) {
+    return { ...progress, owned: true };
+  }
+
+  if (!progress.owned) {
+    return { ...progress, repeated: false };
+  }
+
+  return progress;
+}
+
 export function useStickerProgress(userId: string | undefined) {
   const [progress, setProgress] = useState<StickerProgressMap>({});
   const [loading, setLoading] = useState(true);
@@ -39,18 +53,21 @@ export function useStickerProgress(userId: string | undefined) {
   }, [loadProgress, userId]);
 
   const updateStickerProgress = useCallback(
-    async (stickerNumber: string, patch: Partial<Pick<UserStickerProgress, "owned" | "repeated">>) => {
+    async (stickerNumber: string, patch: StickerProgressPatch) => {
       if (!userId) return;
 
       setError(null);
       const previous = progress[stickerNumber];
+      const corrected = applyProgressRules({
+        owned: previous?.owned ?? false,
+        repeated: previous?.repeated ?? false,
+        ...patch,
+      });
       const optimistic: UserStickerProgress = {
         ...previous,
         user_id: userId,
         sticker_number: stickerNumber,
-        owned: previous?.owned ?? false,
-        repeated: previous?.repeated ?? false,
-        ...patch,
+        ...corrected,
       };
 
       setProgress((current) => ({
