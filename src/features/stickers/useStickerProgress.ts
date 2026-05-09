@@ -6,16 +6,24 @@ export type StickerProgressMap = Record<string, UserStickerProgress>;
 
 type StickerProgressPatch = Partial<Pick<UserStickerProgress, "owned" | "repeated">>;
 
-function applyProgressRules(progress: Pick<UserStickerProgress, "owned" | "repeated">) {
-  if (progress.repeated) {
-    return { ...progress, owned: true };
+function normalizeStickerProgress(
+  current: Pick<UserStickerProgress, "owned" | "repeated">,
+  patch: StickerProgressPatch,
+) {
+  const next = {
+    ...current,
+    ...patch,
+  };
+
+  if (patch.repeated === true) {
+    next.owned = true;
   }
 
-  if (!progress.owned) {
-    return { ...progress, repeated: false };
+  if (patch.owned === false) {
+    next.repeated = false;
   }
 
-  return progress;
+  return next;
 }
 
 export function useStickerProgress(userId: string | undefined) {
@@ -58,11 +66,13 @@ export function useStickerProgress(userId: string | undefined) {
 
       setError(null);
       const previous = progress[stickerNumber];
-      const corrected = applyProgressRules({
-        owned: previous?.owned ?? false,
-        repeated: previous?.repeated ?? false,
-        ...patch,
-      });
+      const corrected = normalizeStickerProgress(
+        {
+          owned: previous?.owned ?? false,
+          repeated: previous?.repeated ?? false,
+        },
+        patch,
+      );
       const optimistic: UserStickerProgress = {
         ...previous,
         user_id: userId,
