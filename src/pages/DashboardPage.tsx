@@ -6,6 +6,7 @@ import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
 import { useAuth } from "../features/auth/useAuth";
+import { buildStickerExportText, downloadStickerExportText } from "../features/stickers/exportStickerList";
 import { useStickerProgress } from "../features/stickers/useStickerProgress";
 import type { Sticker, StickerFilter } from "../types/sticker";
 
@@ -16,6 +17,7 @@ export function DashboardPage() {
   const { progress, loading, error, updateStickerProgress } = useStickerProgress(user?.id);
   const [filter, setFilter] = useState<StickerFilter>("all");
   const [search, setSearch] = useState("");
+  const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
 
   const stats = useMemo(() => {
     const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
@@ -51,6 +53,59 @@ export function DashboardPage() {
     }, {});
   }, [filteredStickers]);
 
+  const teamStats = useMemo(() => {
+    return stickers.reduce<Record<string, { owned: number; total: number }>>((statsByTeam, sticker) => {
+      const currentStats = statsByTeam[sticker.team] ?? { owned: 0, total: 0 };
+
+      statsByTeam[sticker.team] = {
+        owned: currentStats.owned + (progress[sticker.number]?.owned ? 1 : 0),
+        total: currentStats.total + 1,
+      };
+
+      return statsByTeam;
+    }, {});
+  }, [progress]);
+
+  const visibleTeams = Object.keys(groupedStickers);
+
+  function toggleTeam(team: string): void {
+    setCollapsedTeams((current) => ({ ...current, [team]: !current[team] }));
+  }
+
+  function expandAllTeams(): void {
+    setCollapsedTeams((current) => {
+      const next = { ...current };
+
+      visibleTeams.forEach((team) => {
+        next[team] = false;
+      });
+
+      return next;
+    });
+  }
+
+  function collapseAllTeams(): void {
+    setCollapsedTeams((current) => {
+      const next = { ...current };
+
+      visibleTeams.forEach((team) => {
+        next[team] = true;
+      });
+
+      return next;
+    });
+  }
+
+  function downloadTxtExport(): void {
+    const text = buildStickerExportText({
+      stickers,
+      progressByStickerNumber: progress,
+      generatedAt: new Date(),
+    });
+
+    downloadStickerExportText(text);
+  }
+
   return (
     <AppLayout>
       <div className="space-y-5">
@@ -77,13 +132,47 @@ export function DashboardPage() {
           <div className="rounded-lg bg-white p-4 text-sm text-slate-600">No stickers match your search and filter.</div>
         ) : null}
 
-        <div className="space-y-6">
+        {stickers.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {visibleTeams.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={expandAllTeams}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Expand all
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAllTeams}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Collapse all
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={downloadTxtExport}
+              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Download TXT
+            </button>
+          </div>
+        ) : null}
+
+        <div className="space-y-4">
           {Object.entries(groupedStickers).map(([team, teamStickers]) => (
             <StickerGroup
               key={team}
               team={team}
               stickers={teamStickers}
               progress={progress}
+              ownedCount={teamStats[team]?.owned ?? 0}
+              totalCount={teamStats[team]?.total ?? teamStickers.length}
+              collapsed={collapsedTeams[team] ?? false}
+              onToggle={() => toggleTeam(team)}
               onUpdate={(stickerNumber, patch) => void updateStickerProgress(stickerNumber, patch)}
             />
           ))}
