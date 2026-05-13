@@ -6,7 +6,7 @@ import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
 import { useAuth } from "../features/auth/useAuth";
-import { buildStickerExportText, downloadStickerExportText } from "../features/stickers/exportStickerList";
+import { buildStickerExportText, copyStickerExportText } from "../features/stickers/exportStickerList";
 import { useStickerProgress } from "../features/stickers/useStickerProgress";
 import type { Sticker, StickerFilter } from "../types/sticker";
 
@@ -18,6 +18,7 @@ export function DashboardPage() {
   const [filter, setFilter] = useState<StickerFilter>("all");
   const [search, setSearch] = useState("");
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
 
   const stats = useMemo(() => {
     const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
@@ -96,14 +97,20 @@ export function DashboardPage() {
     });
   }
 
-  function downloadTxtExport(): void {
+  async function copyTxtExport(): Promise<void> {
     const text = buildStickerExportText({
       stickers,
       progressByStickerNumber: progress,
-      generatedAt: new Date(),
     });
 
-    downloadStickerExportText(text);
+    try {
+      await copyStickerExportText(text);
+      setCopyStatus("copied");
+      window.setTimeout(() => setCopyStatus("idle"), 2500);
+    } catch {
+      setCopyStatus("error");
+      window.setTimeout(() => setCopyStatus("idle"), 3500);
+    }
   }
 
   return (
@@ -154,11 +161,12 @@ export function DashboardPage() {
             ) : null}
             <button
               type="button"
-              onClick={downloadTxtExport}
+              onClick={() => void copyTxtExport()}
               className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Download TXT
+              {copyStatus === "copied" ? "Copied!" : "Copy list"}
             </button>
+            {copyStatus === "error" ? <span className="self-center text-sm font-medium text-red-600">Could not copy. Try again.</span> : null}
           </div>
         ) : null}
 
