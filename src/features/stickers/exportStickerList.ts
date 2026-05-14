@@ -112,7 +112,8 @@ function buildCompactStickerGroups(
 
   stickers.forEach((sticker) => {
     const stickerProgress = progressByStickerNumber[sticker.number];
-    const shouldInclude = mode === "missing" ? !stickerProgress?.owned : stickerProgress?.repeated === true;
+    const repeatedCount = stickerProgress?.repeated_count ?? (stickerProgress?.repeated ? 1 : 0);
+    const shouldInclude = mode === "missing" ? !stickerProgress?.owned : repeatedCount > 0;
 
     if (!shouldInclude) {
       return;
@@ -120,7 +121,7 @@ function buildCompactStickerGroups(
 
     const groupKey = getCompactGroupKey(sticker.number);
     const existingGroupIndex = groupIndexes.get(groupKey);
-    const number = getCompactStickerNumber(sticker.number);
+    const number = mode === "missing" ? getCompactStickerNumber(sticker.number) : `${getCompactStickerNumber(sticker.number)}x${repeatedCount}`;
 
     if (existingGroupIndex === undefined) {
       groupIndexes.set(groupKey, groups.length);

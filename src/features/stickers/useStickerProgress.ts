@@ -4,23 +4,43 @@ import { getUserStickerProgress, upsertUserStickerProgress } from "./stickerProg
 
 export type StickerProgressMap = Record<string, UserStickerProgress>;
 
-type StickerProgressPatch = Partial<Pick<UserStickerProgress, "owned" | "repeated">>;
+type StickerProgressPatch = Partial<Pick<UserStickerProgress, "owned" | "repeated" | "repeated_count">>;
 
 function normalizeStickerProgress(
-  current: Pick<UserStickerProgress, "owned" | "repeated">,
+  current: Pick<UserStickerProgress, "owned" | "repeated" | "repeated_count">,
   patch: StickerProgressPatch,
-) {
+): Pick<UserStickerProgress, "owned" | "repeated" | "repeated_count"> {
   const next = {
     ...current,
     ...patch,
   };
+  next.repeated_count = Math.max(0, Math.floor(next.repeated_count));
 
   if (patch.repeated === true) {
     next.owned = true;
+    next.repeated = true;
+    if (next.repeated_count === 0) {
+      next.repeated_count = 1;
+    }
   }
 
-  if (patch.owned === false) {
+  if (patch.repeated === false) {
     next.repeated = false;
+    next.repeated_count = 0;
+  }
+
+  if (next.repeated_count > 0) {
+    next.owned = true;
+    next.repeated = true;
+  }
+
+  if (next.repeated_count === 0) {
+    next.repeated = false;
+  }
+
+  if (next.owned === false) {
+    next.repeated = false;
+    next.repeated_count = 0;
   }
 
   return next;
@@ -38,7 +58,19 @@ export function useStickerProgress(userId: string | undefined) {
     try {
       const rows = await getUserStickerProgress(currentUserId);
       const nextProgress = rows.reduce<StickerProgressMap>((map, row) => {
-        map[row.sticker_number] = row;
+        const normalized = normalizeStickerProgress(
+          {
+            owned: row.owned,
+            repeated: row.repeated,
+            repeated_count: row.repeated_count ?? (row.repeated ? 1 : 0),
+          },
+          {},
+        );
+
+        map[row.sticker_number] = {
+          ...row,
+          ...normalized,
+        };
         return map;
       }, {});
 
@@ -70,6 +102,7 @@ export function useStickerProgress(userId: string | undefined) {
         {
           owned: previous?.owned ?? false,
           repeated: previous?.repeated ?? false,
+          repeated_count: previous?.repeated_count ?? (previous?.repeated ? 1 : 0),
         },
         patch,
       );
@@ -91,6 +124,7 @@ export function useStickerProgress(userId: string | undefined) {
           stickerNumber,
           owned: optimistic.owned,
           repeated: optimistic.repeated,
+          repeatedCount: optimistic.repeated_count,
         });
 
         setProgress((current) => ({

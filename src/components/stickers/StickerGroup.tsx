@@ -10,7 +10,7 @@ type StickerGroupProps = {
   totalCount: number;
   collapsed: boolean;
   onToggle: () => void;
-  onUpdate: (stickerNumber: string, patch: { owned?: boolean; repeated?: boolean }) => void;
+  onUpdate: (stickerNumber: string, patch: { owned?: boolean; repeated?: boolean; repeated_count?: number }) => void;
 };
 
 export function StickerGroup({ team, stickers, progress, ownedCount, totalCount, collapsed, onToggle, onUpdate }: StickerGroupProps) {
@@ -52,6 +52,7 @@ export function StickerGroup({ team, stickers, progress, ownedCount, totalCount,
                 sticker={sticker}
                 owned={stickerProgress?.owned ?? false}
                 repeated={stickerProgress?.repeated ?? false}
+                repeatedCount={stickerProgress?.repeated_count ?? (stickerProgress?.repeated ? 1 : 0)}
                 onChange={(patch) => onUpdate(sticker.number, patch)}
               />
             );

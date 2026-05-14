@@ -4,5 +4,6 @@ export type UserStickerProgress = {
   sticker_number: string;
   owned: boolean;
   repeated: boolean;
+  repeated_count: number;
   updated_at?: string;
 };

@@ -12,6 +12,10 @@ import type { Sticker, StickerFilter } from "../types/sticker";
 
 const stickers = stickersData as Sticker[];
 
+function getRepeatedCount(progress: { repeated?: boolean; repeated_count?: number } | undefined): number {
+  return progress?.repeated_count ?? (progress?.repeated ? 1 : 0);
+}
+
 export function DashboardPage() {
   const { user } = useAuth();
   const { progress, loading, error, updateStickerProgress } = useStickerProgress(user?.id);
@@ -22,7 +26,7 @@ export function DashboardPage() {
 
   const stats = useMemo(() => {
     const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
-    const repeated = stickers.filter((sticker) => progress[sticker.number]?.repeated).length;
+    const repeated = stickers.filter((sticker) => getRepeatedCount(progress[sticker.number]) > 0).length;
 
     return { total: stickers.length, owned, repeated };
   }, [progress]);
@@ -33,7 +37,7 @@ export function DashboardPage() {
     return stickers.filter((sticker) => {
       const stickerProgress = progress[sticker.number];
       const owned = stickerProgress?.owned ?? false;
-      const repeated = stickerProgress?.repeated ?? false;
+      const repeated = getRepeatedCount(stickerProgress) > 0;
       const matchesFilter =
         filter === "all" ||
         (filter === "missing" && !owned) ||
