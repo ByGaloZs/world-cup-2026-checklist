@@ -121,7 +121,7 @@ function buildCompactStickerGroups(
 
     const groupKey = getCompactGroupKey(sticker.number);
     const existingGroupIndex = groupIndexes.get(groupKey);
-    const number = mode === "missing" ? getCompactStickerNumber(sticker.number) : `${getCompactStickerNumber(sticker.number)}x${repeatedCount}`;
+    const number = getCompactStickerNumber(sticker.number);
 
     if (existingGroupIndex === undefined) {
       groupIndexes.set(groupKey, groups.length);
