@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import stickersData from "../data/stickers.json";
 import { AppLayout } from "../components/layout/AppLayout";
+import { ScanFriendQrModal } from "../components/sharing/ScanFriendQrModal";
 import { StickerFilters } from "../components/stickers/StickerFilters";
 import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
@@ -23,6 +24,8 @@ export function DashboardPage() {
   const [search, setSearch] = useState("");
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [, setScannedFriendQr] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
@@ -170,6 +173,13 @@ export function DashboardPage() {
             >
               {copyStatus === "copied" ? "Copied!" : "Copy list"}
             </button>
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Scan friend QR
+            </button>
             {copyStatus === "error" ? <span className="self-center text-sm font-medium text-red-600">Could not copy. Try again.</span> : null}
           </div>
         ) : null}
@@ -189,6 +199,11 @@ export function DashboardPage() {
             />
           ))}
         </div>
+        <ScanFriendQrModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={setScannedFriendQr}
+        />
       </div>
     </AppLayout>
   );
