@@ -153,7 +153,7 @@ function formatCompactStickerGroups(groups: CompactStickerGroup[], emptyMessage:
     .join("\n");
 }
 
-function getCompactGroupKey(stickerNumber: string): string {
+export function getCompactGroupKey(stickerNumber: string): string {
   if (stickerNumber === "00") {
     return "FWC_WORLD";
   }
@@ -175,7 +175,7 @@ function getCompactGroupKey(stickerNumber: string): string {
   return parsed.code;
 }
 
-function getCompactDisplayCode(groupKey: string): string {
+export function getCompactDisplayCode(groupKey: string): string {
   if (groupKey === "FWC_WORLD" || groupKey === "FWC_HISTORY") {
     return "FWC";
   }
@@ -183,11 +183,11 @@ function getCompactDisplayCode(groupKey: string): string {
   return groupKey;
 }
 
-function getCompactEmoji(groupKey: string): string {
+export function getCompactEmoji(groupKey: string): string {
   return STICKER_GROUP_EMOJIS[groupKey] ?? "";
 }
 
-function getCompactStickerNumber(stickerNumber: string): string {
+export function getCompactStickerNumber(stickerNumber: string): string {
   if (stickerNumber === "00") {
     return "00";
   }

@@ -7,8 +7,15 @@ import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
 import { useAuth } from "../features/auth/useAuth";
-import { compareStickerProgress, groupTradeMatchesByTeam } from "../features/sharing/compareStickerProgress";
-import { buildStickerExportText, copyStickerExportText } from "../features/stickers/exportStickerList";
+import { compareStickerProgress } from "../features/sharing/compareStickerProgress";
+import {
+  buildStickerExportText,
+  copyStickerExportText,
+  getCompactDisplayCode,
+  getCompactEmoji,
+  getCompactGroupKey,
+  getCompactStickerNumber,
+} from "../features/stickers/exportStickerList";
 import { useStickerProgress } from "../features/stickers/useStickerProgress";
 import type { SharedStickerProgress } from "../types/sharedProgress";
 import type { Sticker, StickerFilter } from "../types/sticker";
@@ -20,23 +27,61 @@ function getRepeatedCount(progress: { repeated?: boolean; repeated_count?: numbe
   return progress?.repeated_count ?? (progress?.repeated ? 1 : 0);
 }
 
+type CompactTradeMatchGroup = {
+  groupKey: string;
+  displayCode: string;
+  emoji: string;
+  numbers: string[];
+};
+
 function formatTradeMatchNumber(match: TradeMatch): string {
-  return match.repeatedCount > 1 ? `${match.sticker.number}x${match.repeatedCount}` : match.sticker.number;
+  const number = getCompactStickerNumber(match.sticker.number);
+
+  return match.repeatedCount > 1 ? `${number}x${match.repeatedCount}` : number;
+}
+
+function buildCompactTradeMatchGroups(matches: TradeMatch[]): CompactTradeMatchGroup[] {
+  const groups: CompactTradeMatchGroup[] = [];
+  const groupIndexes = new Map<string, number>();
+
+  matches.forEach((match) => {
+    const groupKey = getCompactGroupKey(match.sticker.number);
+    const existingGroupIndex = groupIndexes.get(groupKey);
+    const number = formatTradeMatchNumber(match);
+
+    if (existingGroupIndex === undefined) {
+      groupIndexes.set(groupKey, groups.length);
+      groups.push({
+        groupKey,
+        displayCode: getCompactDisplayCode(groupKey),
+        emoji: getCompactEmoji(groupKey),
+        numbers: [number],
+      });
+      return;
+    }
+
+    groups[existingGroupIndex].numbers.push(number);
+  });
+
+  return groups;
 }
 
 function TradeMatchGroups({ matches, emptyMessage }: { matches: TradeMatch[]; emptyMessage: string }) {
-  const groups = groupTradeMatchesByTeam(matches);
-  const entries = Object.entries(groups);
+  const groups = buildCompactTradeMatchGroups(matches);
 
-  if (entries.length === 0) {
+  if (groups.length === 0) {
     return <p className="text-sm text-slate-600">{emptyMessage}</p>;
   }
 
   return (
     <div className="space-y-1 text-sm text-slate-700">
-      {entries.map(([team, teamMatches]) => (
-        <p key={team}>
-          <span className="font-semibold text-slate-900">{team}:</span> {teamMatches.map(formatTradeMatchNumber).join(", ")}
+      {groups.map((group) => (
+        <p key={group.groupKey}>
+          <span className="font-semibold text-slate-900">
+            {group.displayCode}
+            {group.emoji ? ` ${group.emoji}` : ""}:
+          </span>{" "}
+          {group.numbers.join(", ")}
         </p>
       ))}
     </div>
