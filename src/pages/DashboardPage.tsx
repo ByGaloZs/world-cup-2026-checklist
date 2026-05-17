@@ -7,6 +7,7 @@ import { StickerFilters } from "../components/stickers/StickerFilters";
 import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
+import { Button } from "../components/ui/Button";
 import { useAuth } from "../features/auth/useAuth";
 import { compareStickerProgress } from "../features/sharing/compareStickerProgress";
 import { buildStickerExportText, copyStickerExportText } from "../features/stickers/exportStickerList";
@@ -140,16 +141,19 @@ export function DashboardPage() {
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div>
+        <div className="text-center sm:text-left">
           <h2 className="text-2xl font-bold text-slate-950">My Album</h2>
           <p className="mt-1 text-sm text-slate-600">Mark official/base stickers as owned or repeated. Changes are saved to your Supabase account.</p>
         </div>
 
         <StickerStats total={stats.total} owned={stats.owned} repeated={stats.repeated} />
 
-        <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <StickerSearch value={search} onChange={setSearch} />
-          <StickerFilters value={filter} onChange={setFilter} />
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Filter stickers</p>
+            <StickerFilters value={filter} onChange={setFilter} />
+          </div>
         </div>
 
         {loading ? <div className="rounded-lg bg-white p-4 text-sm text-slate-600">Loading sticker progress...</div> : null}
@@ -164,40 +168,53 @@ export function DashboardPage() {
         ) : null}
 
         {stickers.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-3">
             {visibleTeams.length > 0 ? (
-              <>
-                <button
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sections</p>
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+                  <Button
                   type="button"
+                  variant="secondary"
                   onClick={expandAllTeams}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  className="h-11 justify-center"
                 >
                   Expand all
-                </button>
-                <button
+                </Button>
+                  <Button
                   type="button"
+                  variant="secondary"
                   onClick={collapseAllTeams}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  className="h-11 justify-center"
                 >
                   Collapse all
-                </button>
-              </>
+                </Button>
+                </div>
+              </div>
             ) : null}
-            <button
-              type="button"
-              onClick={() => void copyTxtExport()}
-              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              {copyStatus === "copied" ? "Copied!" : "Copy list"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsScannerOpen(true)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Scan friend QR
-            </button>
-            {copyStatus === "error" ? <span className="self-center text-sm font-medium text-red-600">Could not copy. Try again.</span> : null}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sharing</p>
+              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+                <Button
+                  type="button"
+                  variant={copyStatus === "copied" ? "success" : "primary"}
+                  onClick={() => void copyTxtExport()}
+                  className="h-11 justify-center"
+                >
+                  {copyStatus === "copied" ? "Copied!" : "Copy list"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="h-11 justify-center"
+                >
+                  <span className="sm:hidden">Scan QR</span>
+                  <span className="hidden sm:inline">Scan friend QR</span>
+                </Button>
+              </div>
+              {copyStatus === "error" ? <p className="mt-2 text-sm font-medium text-red-600">Could not copy. Try again.</p> : null}
+            </div>
           </div>
         ) : null}
 

@@ -26,22 +26,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-center sm:text-left">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Panini</p>
             <h1 className="text-xl font-bold text-slate-950">World Cup 2026 Checklist</h1>
           </div>
-          <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex flex-col items-center gap-2 sm:items-end">
             {user?.email ? (
               <button
                 type="button"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="break-all text-left text-sm font-medium text-slate-600 underline-offset-4 transition hover:text-slate-950 hover:underline sm:text-right"
+                className="max-w-full break-all text-center text-sm font-medium text-slate-600 underline-offset-4 transition hover:text-slate-950 hover:underline sm:text-right"
               >
                 {user.email}
               </button>
             ) : null}
-            <Button variant="secondary" onClick={handleSignOut}>Log out</Button>
+            <Button variant="secondary" onClick={handleSignOut} className="h-11 w-full sm:w-auto">Log out</Button>
           </div>
         </div>
       </header>
