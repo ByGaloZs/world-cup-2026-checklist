@@ -174,21 +174,21 @@ export function DashboardPage() {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sections</p>
                 <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                   <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={expandAllTeams}
-                  className="h-11 justify-center"
-                >
-                  Expand all
-                </Button>
+                    type="button"
+                    variant="secondary"
+                    onClick={expandAllTeams}
+                    className="h-11 justify-center"
+                  >
+                    Expand all
+                  </Button>
                   <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={collapseAllTeams}
-                  className="h-11 justify-center"
-                >
-                  Collapse all
-                </Button>
+                    type="button"
+                    variant="secondary"
+                    onClick={collapseAllTeams}
+                    className="h-11 justify-center"
+                  >
+                    Collapse all
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -197,7 +197,7 @@ export function DashboardPage() {
               <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 <Button
                   type="button"
-                  variant={copyStatus === "copied" ? "success" : "primary"}
+                  variant={copyStatus === "copied" ? "success" : "secondary"}
                   onClick={() => void copyTxtExport()}
                   className="h-11 justify-center"
                 >
@@ -227,7 +227,7 @@ export function DashboardPage() {
               progress={progress}
               ownedCount={teamStats[team]?.owned ?? 0}
               totalCount={teamStats[team]?.total ?? teamStickers.length}
-              collapsed={collapsedTeams[team] ?? false}
+              collapsed={collapsedTeams[team] ?? true}
               onToggle={() => toggleTeam(team)}
               onUpdate={(stickerNumber, patch) => void updateStickerProgress(stickerNumber, patch)}
             />
