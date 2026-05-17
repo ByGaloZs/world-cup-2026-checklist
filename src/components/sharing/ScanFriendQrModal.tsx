@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import {
+  extractShareCodeFromQrValue,
+  getSharedStickerProgress,
+} from "../../features/sharing/sharedProgressService";
+import type { SharedStickerProgress } from "../../types/sharedProgress";
 import { Button } from "../ui/Button";
 
 type ScanFriendQrModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onScanSuccess?: (decodedText: string) => void;
+  onFriendProgressLoaded?: (input: {
+    shareCode: string;
+    progress: SharedStickerProgress[];
+  }) => void;
 };
 
 const scannerElementId = "friend-qr-scanner";
@@ -26,15 +35,32 @@ async function stopScanner(scanner: Html5Qrcode): Promise<void> {
   }
 }
 
-export function ScanFriendQrModal({ isOpen, onClose, onScanSuccess }: ScanFriendQrModalProps) {
+function countRepeatedStickers(progress: SharedStickerProgress[]): number {
+  return progress.filter((row) => row.repeated_count > 0 || row.repeated).length;
+}
+
+export function ScanFriendQrModal({
+  isOpen,
+  onClose,
+  onScanSuccess,
+  onFriendProgressLoaded,
+}: ScanFriendQrModalProps) {
   const [scannedValue, setScannedValue] = useState<string | null>(null);
+  const [friendProgress, setFriendProgress] = useState<SharedStickerProgress[] | null>(null);
+  const [friendShareCode, setFriendShareCode] = useState<string | null>(null);
+  const [loadingFriendProgress, setLoadingFriendProgress] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasScannedRef = useRef(false);
   const onScanSuccessRef = useRef(onScanSuccess);
+  const onFriendProgressLoadedRef = useRef(onFriendProgressLoaded);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
   }, [onScanSuccess]);
+
+  useEffect(() => {
+    onFriendProgressLoadedRef.current = onFriendProgressLoaded;
+  }, [onFriendProgressLoaded]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -45,7 +71,40 @@ export function ScanFriendQrModal({ isOpen, onClose, onScanSuccess }: ScanFriend
     const scanner = new Html5Qrcode(scannerElementId, false);
     hasScannedRef.current = false;
     setScannedValue(null);
+    setFriendProgress(null);
+    setFriendShareCode(null);
+    setLoadingFriendProgress(false);
     setError(null);
+
+    async function loadFriendProgress(decodedText: string): Promise<void> {
+      const shareCode = extractShareCodeFromQrValue(decodedText);
+
+      if (!shareCode) {
+        setError("Invalid QR code. Please scan a valid profile QR.");
+        return;
+      }
+
+      setLoadingFriendProgress(true);
+      setError(null);
+
+      try {
+        const progress = await getSharedStickerProgress(shareCode);
+
+        if (!active) return;
+
+        setFriendShareCode(shareCode);
+        setFriendProgress(progress);
+        onFriendProgressLoadedRef.current?.({ shareCode, progress });
+      } catch (caughtError) {
+        if (!active) return;
+
+        setError(caughtError instanceof Error ? caughtError.message : "Failed to load friend progress.");
+      } finally {
+        if (active) {
+          setLoadingFriendProgress(false);
+        }
+      }
+    }
 
     async function startScanner(): Promise<void> {
       try {
@@ -62,6 +121,7 @@ export function ScanFriendQrModal({ isOpen, onClose, onScanSuccess }: ScanFriend
             setScannedValue(decodedText);
             onScanSuccessRef.current?.(decodedText);
             void stopScanner(scanner);
+            void loadFriendProgress(decodedText);
           },
           undefined,
         );
@@ -92,6 +152,9 @@ export function ScanFriendQrModal({ isOpen, onClose, onScanSuccess }: ScanFriend
     return null;
   }
 
+  const ownedCount = friendProgress?.filter((row) => row.owned).length ?? 0;
+  const repeatedCount = friendProgress ? countRepeatedStickers(friendProgress) : 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6">
@@ -121,6 +184,25 @@ export function ScanFriendQrModal({ isOpen, onClose, onScanSuccess }: ScanFriend
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
               <p className="text-sm font-semibold text-emerald-800">Scanned value</p>
               <p className="mt-1 break-all text-sm text-emerald-900">{scannedValue}</p>
+            </div>
+          ) : null}
+
+          {loadingFriendProgress ? <p className="text-sm text-slate-600">Loading friend progress...</p> : null}
+
+          {friendProgress ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-semibold text-slate-900">Friend progress loaded</p>
+              {friendShareCode ? <p className="mt-1 break-all text-xs text-slate-500">Share code: {friendShareCode}</p> : null}
+              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-white p-3">
+                  <dt className="text-slate-500">Owned stickers</dt>
+                  <dd className="mt-1 text-xl font-bold text-slate-950">{ownedCount}</dd>
+                </div>
+                <div className="rounded-lg bg-white p-3">
+                  <dt className="text-slate-500">Repeated stickers</dt>
+                  <dd className="mt-1 text-xl font-bold text-slate-950">{repeatedCount}</dd>
+                </div>
+              </dl>
             </div>
           ) : null}
         </div>

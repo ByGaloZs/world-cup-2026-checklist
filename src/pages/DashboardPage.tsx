@@ -7,14 +7,40 @@ import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
 import { useAuth } from "../features/auth/useAuth";
+import { compareStickerProgress, groupTradeMatchesByTeam } from "../features/sharing/compareStickerProgress";
 import { buildStickerExportText, copyStickerExportText } from "../features/stickers/exportStickerList";
 import { useStickerProgress } from "../features/stickers/useStickerProgress";
+import type { SharedStickerProgress } from "../types/sharedProgress";
 import type { Sticker, StickerFilter } from "../types/sticker";
+import type { TradeMatch } from "../types/tradeMatch";
 
 const stickers = stickersData as Sticker[];
 
 function getRepeatedCount(progress: { repeated?: boolean; repeated_count?: number } | undefined): number {
   return progress?.repeated_count ?? (progress?.repeated ? 1 : 0);
+}
+
+function formatTradeMatchNumber(match: TradeMatch): string {
+  return match.repeatedCount > 1 ? `${match.sticker.number}x${match.repeatedCount}` : match.sticker.number;
+}
+
+function TradeMatchGroups({ matches, emptyMessage }: { matches: TradeMatch[]; emptyMessage: string }) {
+  const groups = groupTradeMatchesByTeam(matches);
+  const entries = Object.entries(groups);
+
+  if (entries.length === 0) {
+    return <p className="text-sm text-slate-600">{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="space-y-1 text-sm text-slate-700">
+      {entries.map(([team, teamMatches]) => (
+        <p key={team}>
+          <span className="font-semibold text-slate-900">{team}:</span> {teamMatches.map(formatTradeMatchNumber).join(", ")}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -25,7 +51,8 @@ export function DashboardPage() {
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [, setScannedFriendQr] = useState<string | null>(null);
+  const [friendProgress, setFriendProgress] = useState<SharedStickerProgress[] | null>(null);
+  const [friendShareCode, setFriendShareCode] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const owned = stickers.filter((sticker) => progress[sticker.number]?.owned).length;
@@ -73,6 +100,18 @@ export function DashboardPage() {
       return statsByTeam;
     }, {});
   }, [progress]);
+
+  const tradeComparison = useMemo(() => {
+    if (!friendProgress) {
+      return null;
+    }
+
+    return compareStickerProgress({
+      stickers,
+      myProgressByStickerNumber: progress,
+      friendProgress,
+    });
+  }, [friendProgress, progress]);
 
   const visibleTeams = Object.keys(groupedStickers);
 
@@ -184,6 +223,40 @@ export function DashboardPage() {
           </div>
         ) : null}
 
+        {tradeComparison ? (
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+              <h3 className="text-lg font-bold text-slate-950">Trade match results</h3>
+              {friendShareCode ? <p className="break-all text-xs text-slate-500">Friend code: {friendShareCode}</p> : null}
+            </div>
+
+            {tradeComparison.friendCanGiveMe.length === 0 && tradeComparison.iCanGiveFriend.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-600">No matches found.</p>
+            ) : (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <h4 className="font-semibold text-slate-900">Your friend can give you</h4>
+                  <div className="mt-2">
+                    <TradeMatchGroups
+                      matches={tradeComparison.friendCanGiveMe}
+                      emptyMessage="No stickers your friend can give you."
+                    />
+                  </div>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <h4 className="font-semibold text-slate-900">You can give your friend</h4>
+                  <div className="mt-2">
+                    <TradeMatchGroups
+                      matches={tradeComparison.iCanGiveFriend}
+                      emptyMessage="No stickers you can give your friend."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        ) : null}
+
         <div className="space-y-4">
           {Object.entries(groupedStickers).map(([team, teamStickers]) => (
             <StickerGroup
@@ -202,7 +275,10 @@ export function DashboardPage() {
         <ScanFriendQrModal
           isOpen={isScannerOpen}
           onClose={() => setIsScannerOpen(false)}
-          onScanSuccess={setScannedFriendQr}
+          onFriendProgressLoaded={({ shareCode, progress }) => {
+            setFriendShareCode(shareCode);
+            setFriendProgress(progress);
+          }}
         />
       </div>
     </AppLayout>
