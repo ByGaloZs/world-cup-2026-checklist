@@ -2,90 +2,22 @@ import { useMemo, useState } from "react";
 import stickersData from "../data/stickers.json";
 import { AppLayout } from "../components/layout/AppLayout";
 import { ScanFriendQrModal } from "../components/sharing/ScanFriendQrModal";
+import { TradeResultsModal } from "../components/sharing/TradeResultsModal";
 import { StickerFilters } from "../components/stickers/StickerFilters";
 import { StickerGroup } from "../components/stickers/StickerGroup";
 import { StickerSearch } from "../components/stickers/StickerSearch";
 import { StickerStats } from "../components/stickers/StickerStats";
 import { useAuth } from "../features/auth/useAuth";
 import { compareStickerProgress } from "../features/sharing/compareStickerProgress";
-import {
-  buildStickerExportText,
-  copyStickerExportText,
-  getCompactDisplayCode,
-  getCompactEmoji,
-  getCompactGroupKey,
-  getCompactStickerNumber,
-} from "../features/stickers/exportStickerList";
+import { buildStickerExportText, copyStickerExportText } from "../features/stickers/exportStickerList";
 import { useStickerProgress } from "../features/stickers/useStickerProgress";
 import type { SharedStickerProgress } from "../types/sharedProgress";
 import type { Sticker, StickerFilter } from "../types/sticker";
-import type { TradeMatch } from "../types/tradeMatch";
 
 const stickers = stickersData as Sticker[];
 
 function getRepeatedCount(progress: { repeated?: boolean; repeated_count?: number } | undefined): number {
   return progress?.repeated_count ?? (progress?.repeated ? 1 : 0);
-}
-
-type CompactTradeMatchGroup = {
-  groupKey: string;
-  displayCode: string;
-  emoji: string;
-  numbers: string[];
-};
-
-function formatTradeMatchNumber(match: TradeMatch): string {
-  const number = getCompactStickerNumber(match.sticker.number);
-
-  return match.repeatedCount > 1 ? `${number}x${match.repeatedCount}` : number;
-}
-
-function buildCompactTradeMatchGroups(matches: TradeMatch[]): CompactTradeMatchGroup[] {
-  const groups: CompactTradeMatchGroup[] = [];
-  const groupIndexes = new Map<string, number>();
-
-  matches.forEach((match) => {
-    const groupKey = getCompactGroupKey(match.sticker.number);
-    const existingGroupIndex = groupIndexes.get(groupKey);
-    const number = formatTradeMatchNumber(match);
-
-    if (existingGroupIndex === undefined) {
-      groupIndexes.set(groupKey, groups.length);
-      groups.push({
-        groupKey,
-        displayCode: getCompactDisplayCode(groupKey),
-        emoji: getCompactEmoji(groupKey),
-        numbers: [number],
-      });
-      return;
-    }
-
-    groups[existingGroupIndex].numbers.push(number);
-  });
-
-  return groups;
-}
-
-function TradeMatchGroups({ matches, emptyMessage }: { matches: TradeMatch[]; emptyMessage: string }) {
-  const groups = buildCompactTradeMatchGroups(matches);
-
-  if (groups.length === 0) {
-    return <p className="text-sm text-slate-600">{emptyMessage}</p>;
-  }
-
-  return (
-    <div className="space-y-1 text-sm text-slate-700">
-      {groups.map((group) => (
-        <p key={group.groupKey}>
-          <span className="font-semibold text-slate-900">
-            {group.displayCode}
-            {group.emoji ? ` ${group.emoji}` : ""}:
-          </span>{" "}
-          {group.numbers.join(", ")}
-        </p>
-      ))}
-    </div>
-  );
 }
 
 export function DashboardPage() {
@@ -96,6 +28,7 @@ export function DashboardPage() {
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isTradeResultsOpen, setIsTradeResultsOpen] = useState(false);
   const [friendProgress, setFriendProgress] = useState<SharedStickerProgress[] | null>(null);
   const [friendShareCode, setFriendShareCode] = useState<string | null>(null);
 
@@ -268,40 +201,6 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        {tradeComparison ? (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-              <h3 className="text-lg font-bold text-slate-950">Trade match results</h3>
-              {friendShareCode ? <p className="break-all text-xs text-slate-500">Friend code: {friendShareCode}</p> : null}
-            </div>
-
-            {tradeComparison.friendCanGiveMe.length === 0 && tradeComparison.iCanGiveFriend.length === 0 ? (
-              <p className="mt-4 text-sm text-slate-600">No matches found.</p>
-            ) : (
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <h4 className="font-semibold text-slate-900">Your friend can give you</h4>
-                  <div className="mt-2">
-                    <TradeMatchGroups
-                      matches={tradeComparison.friendCanGiveMe}
-                      emptyMessage="No stickers your friend can give you."
-                    />
-                  </div>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3">
-                  <h4 className="font-semibold text-slate-900">You can give your friend</h4>
-                  <div className="mt-2">
-                    <TradeMatchGroups
-                      matches={tradeComparison.iCanGiveFriend}
-                      emptyMessage="No stickers you can give your friend."
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-        ) : null}
-
         <div className="space-y-4">
           {Object.entries(groupedStickers).map(([team, teamStickers]) => (
             <StickerGroup
@@ -323,7 +222,16 @@ export function DashboardPage() {
           onFriendProgressLoaded={({ shareCode, progress }) => {
             setFriendShareCode(shareCode);
             setFriendProgress(progress);
+            setIsScannerOpen(false);
+            setIsTradeResultsOpen(true);
           }}
+        />
+        <TradeResultsModal
+          isOpen={isTradeResultsOpen && Boolean(tradeComparison)}
+          onClose={() => setIsTradeResultsOpen(false)}
+          friendShareCode={friendShareCode}
+          friendCanGiveMe={tradeComparison?.friendCanGiveMe ?? []}
+          iCanGiveFriend={tradeComparison?.iCanGiveFriend ?? []}
         />
       </div>
     </AppLayout>

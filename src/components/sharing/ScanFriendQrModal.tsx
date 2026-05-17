@@ -35,10 +35,6 @@ async function stopScanner(scanner: Html5Qrcode): Promise<void> {
   }
 }
 
-function countRepeatedStickers(progress: SharedStickerProgress[]): number {
-  return progress.filter((row) => row.repeated_count > 0 || row.repeated).length;
-}
-
 export function ScanFriendQrModal({
   isOpen,
   onClose,
@@ -46,8 +42,6 @@ export function ScanFriendQrModal({
   onFriendProgressLoaded,
 }: ScanFriendQrModalProps) {
   const [scannedValue, setScannedValue] = useState<string | null>(null);
-  const [friendProgress, setFriendProgress] = useState<SharedStickerProgress[] | null>(null);
-  const [friendShareCode, setFriendShareCode] = useState<string | null>(null);
   const [loadingFriendProgress, setLoadingFriendProgress] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasScannedRef = useRef(false);
@@ -71,8 +65,6 @@ export function ScanFriendQrModal({
     const scanner = new Html5Qrcode(scannerElementId, false);
     hasScannedRef.current = false;
     setScannedValue(null);
-    setFriendProgress(null);
-    setFriendShareCode(null);
     setLoadingFriendProgress(false);
     setError(null);
 
@@ -92,9 +84,8 @@ export function ScanFriendQrModal({
 
         if (!active) return;
 
-        setFriendShareCode(shareCode);
-        setFriendProgress(progress);
         onFriendProgressLoadedRef.current?.({ shareCode, progress });
+        onClose();
       } catch (caughtError) {
         if (!active) return;
 
@@ -152,9 +143,6 @@ export function ScanFriendQrModal({
     return null;
   }
 
-  const ownedCount = friendProgress?.filter((row) => row.owned).length ?? 0;
-  const repeatedCount = friendProgress ? countRepeatedStickers(friendProgress) : 0;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6">
@@ -188,23 +176,6 @@ export function ScanFriendQrModal({
           ) : null}
 
           {loadingFriendProgress ? <p className="text-sm text-slate-600">Loading friend progress...</p> : null}
-
-          {friendProgress ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-sm font-semibold text-slate-900">Friend progress loaded</p>
-              {friendShareCode ? <p className="mt-1 break-all text-xs text-slate-500">Share code: {friendShareCode}</p> : null}
-              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg bg-white p-3">
-                  <dt className="text-slate-500">Owned stickers</dt>
-                  <dd className="mt-1 text-xl font-bold text-slate-950">{ownedCount}</dd>
-                </div>
-                <div className="rounded-lg bg-white p-3">
-                  <dt className="text-slate-500">Repeated stickers</dt>
-                  <dd className="mt-1 text-xl font-bold text-slate-950">{repeatedCount}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
         </div>
 
         <div className="mt-6 flex justify-end">
